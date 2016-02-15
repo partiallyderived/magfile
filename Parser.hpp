@@ -14,8 +14,6 @@
 #include <vector>
 #include <map>
 
-#include "Game.hpp"
-
 class Word;
 
 using namespace std;
