@@ -1,7 +1,7 @@
 /*
  * Word.hpp
  *
- *  Created on: Feb 6, 2016
+ *  Created on: Feb 20, 2016
  *      Author: bobbey
  */
 
@@ -12,25 +12,34 @@
 
 using namespace std;
 
-enum class PartOfSpeech {NOTHING = 0, NOUN, VERB, ADJECTIVE, ADVERB, PREPOSITION, ARTICLE, QUANTIFIER, A, AND};
+class Game;
+class Parser;
 
-PartOfSpeech partOfSpeechFromChar(const char letter) throw();
+enum class PartOfSpeech {
+		NOTHING,
+		NOUN,
+		VERB ,
+		ADJECTIVE,
+		ADVERB,
+		PREPOSITION,
+		ARTICLE,
+		QUANTIFIER,
+		A,
+		AND
+};
 
 class Word {
+	friend Game;
+	friend Parser;
 	private:
-		static const Word A, AND;
-
 		string name;
 		PartOfSpeech partOfSpeech;
-
 	public:
-		static const Word NOT_FOUND;
+		Word(const string& name = "", const PartOfSpeech partOfSpeech = PartOfSpeech::NOTHING);
 
-		Word(const string& name, const PartOfSpeech partOfSpeech) throw();
-
-		string getName() const throw();
-
-		PartOfSpeech getPartOfSpeech() const throw();
+		bool operator == (const Word& that) const throw();
 };
+
+
 
 #endif /* WORD_HPP_ */

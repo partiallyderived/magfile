@@ -14,7 +14,12 @@
 #include <vector>
 #include <map>
 
-class Word;
+#include "Utilities.hpp"
+#include "Word.hpp"
+
+class Command;
+class Game;
+class Parser;
 
 using namespace std;
 
@@ -23,64 +28,12 @@ enum class GrammarStatus {
 	FOUND_VERB = 1,
 	FOUND_ADVERB = 2,
 	ADVERB_AFTER_VERB = 4,
-	MULTI_ADVERB = 8,
-	MULTI_COMMAND = 16,
-	BAD_GRAMMAR = 32,
-	INCOMPLETE = 64,
-	FAIL = MULTI_ADVERB | MULTI_COMMAND | BAD_GRAMMAR | INCOMPLETE
+	ALL = 7
 };
 
-class Action {
-	private:
-		string verb, adverb;
+DEFINE_FLAG_OVERLOADS(GrammarStatus)
 
-	public:
-		Action(const string& verb, const string& adverb = "") throw();
-
-		string getAdverb() const throw();
-		string getVerb() const throw();
-		bool hasAdverb() const throw();
-
-};
-
-class Item {
-	private:
-		string name, preposition, quantifier;
-		vector<string> adjectives;
-
-	public:
-		static const Item NOTHING;
-
-		Item(const string& name = "",
-			const string& preposition = "",
-			const string& quantifier = "",
-			const vector<string>& adjectives = vector<string>()) throw();
-
-		vector<string> getAdjectives() const throw();
-		string getName() const throw();
-		string getPreposition() const throw();
-		string getQuantifier() const throw();
-		bool hasAdjectives() const throw();
-		bool hasPreposition() const throw();
-		bool hasQuantifier() const throw();
-
-};
-
-class Command {
-	private:
-		Action action;
-		Item directObject;
-		vector<Item> indirectObjects;
-
-	public:
-		Command(const Action& action, const Item& directObject = Item::NOTHING, const vector<Item>& indirectObjects = vector<Item>()) throw();
-
-		bool hasIndirectObjects() const throw();
-		bool hasDirectObject() const throw();
-		Action getAction() const throw();
-		vector<Item> getIndirectObjects() const throw();
-		Item getDirectObject() const throw();
-};
+PartOfSpeech partOfSpeechFromChar(const char letter) throw();
 
 class ParserException: public exception {};
 
@@ -89,7 +42,7 @@ class BadCommandException: public ParserException {
 		string message;
 
 	public:
-		BadCommandException(const vector<Word>& words) throw();
+		BadCommandException(const string& message) throw();
 
 		const char* what() const throw();
 };
@@ -104,47 +57,61 @@ class DictionaryLoadException: public ParserException {
 		const char* what() const throw();
 };
 
+enum class ParseStatus {
+	GOOD = 0,
+	UNKNOWN_WORD,
+	MULTI_ADVERB,
+	MULTI_COMMAND,
+	BAD_GRAMMAR,
+	INCOMPLETE
+};
+
+class ParseResult {
+	friend Game;
+	friend Parser;
+	private:
+		ParseStatus status;
+		unsigned numParsed;
+		vector<Command> commands;
+
+	public:
+		ParseResult(
+			const ParseStatus status = ParseStatus::GOOD,
+			const unsigned numParsed = 0,
+			const vector<Command>& commands = vector<Command>()
+			);
+};
+
 class Parser {
 	private:
-		static pair<GrammarStatus, unsigned> checkGrammarRecurse(vector<vector<Word> >* wordOptions,
-			const unsigned i,
-			const GrammarStatus status,
+		static ParseResult checkGrammar(const vector<vector<Word> >& wordOptions) throw();
+
+		static pair<GrammarStatus, ParseStatus> checkSpeech(
+			const PartOfSpeech partOfSpeech,
+			GrammarStatus grammarStatus,
 			const PartOfSpeech previousPart
-		) throw();
+			) throw();
 
-		static pair<GrammarStatus, unsigned> checkGrammarRecurse(vector<vector<Word> >* wordOptions,
-			const unsigned i,
-			const GrammarStatus status,
-			const PartOfSpeech previousPart
-		);
-
-		static GrammarStatus checkWord(const Word& word,
-			GrammarStatus status,
-			const PartOfSpeech previousPart) throw();
-
-		static vector<vector<Word> > expandSentences(const vector<vector<Word> >& wordOptions) throw();
-
-		static int find(const Word& word, const vector<Word>& words) throw();
-		static vector<Command> makeCommandsRecurse(const vector<Word>& wordOptions, const unsigned i) throw();
-		static vector<string> split(const string& input) throw();
-		static string toLower(const string& input) throw();
+		static Command makeCommand(const vector<Word>& words);
+		static vector<Command> makeCommands(const vector<vector<Word> >& wordOptions);
 
 		map<string, vector<Word> > dictionary;
 
+		vector<vector<Word> > getWordOptions(const vector<string>& input) const throw();
+
 	public:
-		static pair<GrammarStatus, unsigned> checkGrammar(vector<vector<Word> >* const wordOptions) throw();
-		static void filter(vector<vector<Word> >* wordOptions) throw();
-		static Command makeCommand(const vector<Word>& words) throw();
-		static vector<Command> makeCommands(const vector<vector<Word> >& wordOptions) throw();
+		static vector<string> split(const string& input) throw();
+		static string toLower(const string& input) throw();
 
 		bool addEntry(const string& key, const Word& word) throw();
 		vector<Word> getWords(const string& key) const throw();
-		vector<vector<Word> > parseWordOptions(const string& input) const throw();
 		bool hasEntry(const string& key, const Word& word) const throw();
 		bool hasKey(const string& key) const throw();
 		void loadDictionary(istream* const input);
 		void loadDictionary(const string& inputPath);
-		bool removeEntry(const string& key, const Word word) throw();
+		ParseResult parse(const vector<string>& input) const;
+		bool removeEntry(const string& key, const Word& word) throw();
+
 };
 
 #endif /* PARSER_HPP_ */
